@@ -19,15 +19,14 @@ print("[INFO] Script directory:", script_dir)
 # -----------------------------------------
 print("[INFO] Checking GitHub repository...")
 
-repo_url = "https://github.com/shubhamkummarrr/Extract-Emails-from-Files.git"
+repo_url = "https://github.com/shubhamkummarrr/GitHub-to-Database-Automation-Pipeline.git"
 branch_name = "main"
-clone_dir = script_dir / "Extract-Emails-from-Files"
+clone_dir = script_dir / "GitHub-to-Database-Automation-Pipeline"
 
 if not clone_dir.exists():
     print("[INFO] Cloning repository...")
     subprocess.check_call(["git", "clone", repo_url])
-    
-    # Checkout the branch AFTER clone
+
     print(f"[INFO] Switching to branch {branch_name}...")
     subprocess.check_call(["git", "-C", str(clone_dir), "checkout", branch_name])
 
@@ -35,21 +34,20 @@ else:
     print("[INFO] Repository already exists. Pulling latest changes...")
     subprocess.check_call(["git", "-C", str(clone_dir), "pull"])
 
-    # ALWAYS checkout correct branch
     print(f"[INFO] Ensuring branch {branch_name} is active...")
     subprocess.check_call(["git", "-C", str(clone_dir), "checkout", branch_name])
 
 
 # -----------------------------------------
-# Move inside Team-Management-System folder
+# Move inside Extract-Emails-from-Files folder
 # -----------------------------------------
-tms_path = script_dir / "Team-Management-System"
+tms_path = script_dir / "GitHub-to-Database-Automation-Pipeline"
 
 if tms_path.exists():
-    print("[INFO] Switching into Team-Management-System folder...")
+    print("[INFO] Switching into GitHub-to-Database-Automation-Pipeline folder...")
     os.chdir(tms_path)
 else:
-    print("[WARNING] Team-Management-System folder NOT found. Running in current directory.")
+    print("[WARNING] Extract-Emails-from-Files folder NOT found. Running in current directory.")
 
 
 # -----------------------------------------
@@ -87,7 +85,6 @@ else:
     pip_path = "venv/bin/pip"
     python_path = "venv/bin/python"
 
-# Make sure pip is executable on Linux/Mac
 try:
     os.chmod(pip_path, 0o755)
 except:
@@ -159,6 +156,7 @@ def extract_phone_numbers(text):
             cleaned.append(p)
     return sorted(set(cleaned))
 
+
 def extract_addresses(text: str) -> list:
     text = clean_text(text)
     raw_matches = re.findall(ADDRESS_REGEX, text, flags=re.IGNORECASE)
@@ -187,10 +185,11 @@ def extract_from_text(text):
     addresses = extract_addresses(text)
     return emails, phones, addresses
 
+
 def main():
-    base = Path(".")
+    base = Path("TenderAI")
     if not base.exists():
-        print("ERROR: base folder not found.")
+        print("ERROR: TenderAI folder not found.")
         return
 
     folders = {}
@@ -218,19 +217,19 @@ def main():
             if not (emails or phones or addresses):
                 continue
 
-        all_emails.update(emails)
-        all_phones.update(phones)
-        all_addresses.update(addresses)
+            all_emails.update(emails)
+            all_phones.update(phones)
+            all_addresses.update(addresses)
 
-        if folder not in folders:
-            folders[folder] = {"folder": folder, "files": []}
+            if folder not in folders:
+                folders[folder] = {"folder": folder, "files": []}
 
-        folders[folder]["files"].append({
-            "file_name": file,
-            "emails": emails,
-            "phones": phones,
-            "addresses": addresses,
-        })
+            folders[folder]["files"].append({
+                "file_name": file,
+                "emails": emails,
+                "phones": phones,
+                "addresses": addresses,
+            })
 
     result = {
         "summary": {
@@ -244,19 +243,19 @@ def main():
     Path("extracted_results.json").write_text(
         json.dumps(result, indent=4)
     )
-    
+
     print("\n===== SUMMARY REPORT =====")
     print("Total Emails Found      :", len(all_emails))
     print("Total Phones Found      :", len(all_phones))
     print("Total Addresses Found   :", len(all_addresses))
 
-    prev_data_path = Path('extracted_results.json')
+    prev_data_path = Path("extracted_results.json")
     if prev_data_path.exists():
         try:
             prev_data = json.loads(prev_data_path.read_text())
-            prev_emails = set(prev_data.get('summary', {}).get('all_emails', []))
-            prev_phones = set(prev_data.get('summary', {}).get('all_phones', []))
-            prev_addresses = set(prev_data.get('summary', {}).get('all_addresses', []))
+            prev_emails = set(prev_data.get("summary", {}).get("all_emails", []))
+            prev_phones = set(prev_data.get("summary", {}).get("all_phones", []))
+            prev_addresses = set(prev_data.get("summary", {}).get("all_addresses", []))
 
             new_emails = all_emails - prev_emails
             new_phones = all_phones - prev_phones
@@ -273,6 +272,7 @@ def main():
         print("First run: no previous data to compare.")
 
     print("Extraction complete.")
+
 
 if __name__ == "__main__":
     main()
@@ -314,6 +314,7 @@ CREATE TABLE IF NOT EXISTS contact_data (
 
 data = json.load(open("extracted_results.json"))
 
+
 def file_exists(folder, file):
     cursor.execute(
         "SELECT 1 FROM contact_data WHERE folder=%s AND file=%s LIMIT 1",
@@ -321,11 +322,13 @@ def file_exists(folder, file):
     )
     return cursor.fetchone() is not None
 
+
 def insert_row(folder, file, email=None, phone=None, address=None):
     cursor.execute("""
         INSERT INTO contact_data (folder, file, email, phone, address)
         VALUES (%s, %s, %s, %s, %s)
     """, (folder, file, email, phone, address))
+
 
 for folder_obj in data["folders"]:
     folder = folder_obj["folder"]
@@ -343,10 +346,8 @@ for folder_obj in data["folders"]:
 
         for e in emails:
             insert_row(folder, file, email=e)
-
         for p in phones:
             insert_row(folder, file, phone=p)
-
         for a in addresses:
             insert_row(folder, file, address=a)
 
@@ -371,5 +372,3 @@ print("[INFO] Running DB insert...")
 subprocess.check_call([python_path, "insert_contacts.py"])
 
 print("=== EmailPhoneExtraction Automation Finished Successfully ===")
-
-
